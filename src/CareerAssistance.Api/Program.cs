@@ -1,41 +1,38 @@
+using CareerAssistance.Application.Interfaces;
+using CareerAssistance.Api.Services;
+using CareerAssistance.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// 1. Додаємо підтримку контролерів
+builder.Services.AddControllers();
+
+// 2. Вбудована генерація OpenAPI (документація API)
 builder.Services.AddOpenApi();
+
+// 3. Реєстрація нашого сервісу користувача (тимчасова заглушка до впровадження JWT)
+builder.Services.AddScoped<ICurrentUserService, TestUserService>();
+
+// 4. Підключення нашого шару інфраструктури (DbContext, PostgreSQL)
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Налаштування HTTP-пайплайну запитів
 if (app.Environment.IsDevelopment())
 {
+    // Дозволяємо генерацію JSON-файлу специфікації API в режимі розробки
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+// Обов'язково додаємо автентифікацію та авторизацію в пайплайн
+// Навіть якщо зараз вони працюють у базовому режимі, вони необхідні для майбутнього JWT
+app.UseAuthentication();
+app.UseAuthorization();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+// Мапимо наші майбутні контролери
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
