@@ -14,6 +14,11 @@ public static class AuthenticationExtensions
         var secret = configuration["JwtSettings:Secret"] 
                      ?? throw new InvalidOperationException("JwtSettings:Secret is not configured in appsettings.json");
         
+        if (Encoding.UTF8.GetByteCount(secret) < 32)
+        {
+            throw new InvalidOperationException("JwtSettings:Secret must be at least 32 bytes (256 bits) long to comply with HMAC-SHA256 requirements.");
+        }
+        
         var issuer = configuration["JwtSettings:Issuer"] 
                      ?? throw new InvalidOperationException("JwtSettings:Issuer is not configured in appsettings.json");
         
