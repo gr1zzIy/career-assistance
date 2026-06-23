@@ -9,6 +9,10 @@ public class ApplicationDbContext : DbContext
 {
     private readonly ICurrentUserService _currentUserService;
 
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options,
         ICurrentUserService currentUserService) : base(options)

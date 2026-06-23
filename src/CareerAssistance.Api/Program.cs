@@ -1,38 +1,63 @@
+using System.Text;
 using CareerAssistance.Application.Interfaces;
 using CareerAssistance.Api.Services;
 using CareerAssistance.Infrastructure;
+using CareerAssistance.Infrastructure.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Додаємо підтримку контролерів
 builder.Services.AddControllers();
-
-// 2. Вбудована генерація OpenAPI (документація API)
 builder.Services.AddOpenApi();
 
-// 3. Реєстрація нашого сервісу користувача (тимчасова заглушка до впровадження JWT)
-builder.Services.AddScoped<ICurrentUserService, TestUserService>();
+// Додаємо HttpContextAccessor, щоб CurrentUserService міг читати сесію користувача
+builder.Services.AddHttpContextAccessor();
 
-// 4. Підключення нашого шару інфраструктури (DbContext, PostgreSQL)
+// Реєструємо сервіс користувача
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Зчитуємо конфігурацію JWT для налаштування системи валідації
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()
+                  ?? throw new InvalidOperationException("JwtSettings are not configured in appsettings.json");
+
+// Налаштовуємо сервіси автентифікації додатка (JWT Bearer)
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+        ClockSkew = TimeSpan.Zero // Токен прострочується строго в секунду ліміту
+    };
+});
+
+// Підключаємо інфраструктуру (PostgreSQL, DbContext, AuthService)
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Налаштування HTTP-пайплайну запитів
 if (app.Environment.IsDevelopment())
 {
-    // Дозволяємо генерацію JSON-файлу специфікації API в режимі розробки
     app.MapOpenApi();
 }
 
 app.UseHttpsRedirection();
 
-// Обов'язково додаємо автентифікацію та авторизацію в пайплайн
-// Навіть якщо зараз вони працюють у базовому режимі, вони необхідні для майбутнього JWT
+// Порядок критично важливий: спочатку система розпізнає ХТО користувач, а потім перевіряє ЩО йому дозволено
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Мапимо наші майбутні контролери
 app.MapControllers();
 
 app.Run();
