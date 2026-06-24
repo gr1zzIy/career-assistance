@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="compose.yaml" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/CareerAssistance.Api/CareerAssistance.Api.csproj" />
     <Project Path="src/CareerAssistance.Application/CareerAssistance.Application.csproj" />

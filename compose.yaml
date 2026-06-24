@@ -1,0 +1,42 @@
+﻿version: '3.8'
+
+services:
+  # Сервіс бази даних
+  db:
+    image: postgres:16-alpine
+    container_name: career-assistance-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: SuperSecurePassword123
+      POSTGRES_DB: career_assistance_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - ca-network
+
+  # Сервіс нашого .NET API
+  api:
+    image: career-assistance-api
+    container_name: career-assistance-api
+    build:
+      context: .
+      dockerfile: src/CareerAssistance.Api/Dockerfile
+    ports:
+      - "5259:8080" # Мапимо локальний порт 5259 на внутрішній 8080 контейнера
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Перевизначаємо рядок підключення для Docker: Host тепер не localhost, а назва сервісу "db"
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=career_assistance_dev;Username=postgres;Password=SuperSecurePassword123
+    depends_on:
+      - db
+    networks:
+      - ca-network
+
+volumes:
+  pgdata:
+
+networks:
+  ca-network:
+    driver: bridge
