@@ -22,6 +22,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
+// 3. Автоматичний старт бази даних та сідинг
+await app.ApplyMigrationsAndSeedAsync();
+
 // Налаштування Пайплайну обробки HTTP-запитів (Middleware)
 if (app.Environment.IsDevelopment())
 {
