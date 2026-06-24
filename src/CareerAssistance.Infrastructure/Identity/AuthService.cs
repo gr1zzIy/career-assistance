@@ -9,6 +9,8 @@ using CareerAssistance.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Google.Apis.Auth;
+using Microsoft.Extensions.Configuration;
 
 namespace CareerAssistance.Infrastructure.Identity;
 
@@ -16,11 +18,16 @@ public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly JwtSettings _jwtSettings;
+    private readonly IConfiguration _configuration;
     
-    public AuthService(ApplicationDbContext dbContext, IOptions<JwtSettings> jwtSettings)
+    public AuthService(
+        ApplicationDbContext dbContext, 
+        IOptions<JwtSettings> jwtSettings,
+        IConfiguration configuration)
     {
         _dbContext = dbContext;
         _jwtSettings = jwtSettings.Value;
+        _configuration = configuration;
     }
     
     public async Task<AuthResponse> RegisterAsync(
@@ -100,6 +107,58 @@ public class AuthService : IAuthService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new AuthResponse(newAccessToken, newRefreshToken.Token, newRefreshToken.ExpiresAt);
+    }
+
+    public async Task<AuthResponse> LoginWithGoogleAsync(
+        string idToken, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Валідуємо токен через бібліотеку Google
+            var settings = new GoogleJsonWebSignature.ValidationSettings
+            {
+                // Перевіряємо, що токен призначений саме для нашого додатка
+                //todo поки без фронту то комент Audience = new[] { _configuration["Authentication:Google:ClientId"] }
+            };
+
+            // Якщо токен підроблений або прострочений - цей метод викине ексепшн
+            var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, settings);
+
+            // Витягуємо email користувача, який Google вже залізно підтвердив
+            var email = payload.Email;
+
+            // Шукаємо користувача в нашій базі даних
+            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+            if (user == null)
+            {
+                // Якщо користувача немає - це його перший вхід (автоматична реєстрація!)
+                user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = email,
+                    PasswordHash = "" // Для Google-юзерів пароль порожній, вони входять без нього
+                };
+
+                _dbContext.Users.Add(user);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            // Користувач перевірений. Генеруємо для нього НАШІ власні токені
+            var accessToken = GenerateAccessToken(user);
+            var refreshToken = GenerateRefreshToken(user.Id);
+
+            // Зберігаємо рефреш-токен у базу
+            _dbContext.RefreshTokens.Add(refreshToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return new AuthResponse(accessToken, refreshToken.Token, refreshToken.ExpiresAt);
+        }
+        catch (InvalidJwtException)
+        {
+            throw new UnauthorizedAccessException("Невалідний Google ID токен.");
+        }
     }
 
     #region Helpers

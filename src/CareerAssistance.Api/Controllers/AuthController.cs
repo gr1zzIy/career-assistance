@@ -113,6 +113,32 @@ public class AuthController : ControllerBase
             return Unauthorized(ex.Message);
         }
     }
+    
+    /// <summary>
+    /// Вхід або автоматична реєстрація через Google.
+    /// </summary>
+    /// <remarks>
+    /// Приймає зашифрований IdToken, отриманий фронтендом від Google SDK.
+    /// Перевіряє його валідність, автентифікує користувача та повертає стандартну пару JWT токенів системи.
+    /// </remarks>
+    /// <param name="request">Об'єкт, що містить Google IdToken</param>
+    /// <param name="cancellationToken">Токен скасування операції</param>
+    /// <returns>Пара токенів авторизації нашого API</returns>
+    [HttpPost("google")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await _authService.LoginWithGoogleAsync(request.IdToken, cancellationToken);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+    }
 }
 
 /// <summary>
