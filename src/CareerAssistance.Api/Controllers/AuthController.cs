@@ -4,8 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CareerAssistance.Api.Controllers;
 
+/// <summary>
+/// Управління автентифікацією: реєстрація, авторизація та оновлення сесій (JWT).
+/// </summary>
 [ApiController]
 [Route("api/auth")]
+[Produces("application/json")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -15,7 +19,20 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
     
+    /// <summary>
+    /// Реєстрація нового користувача у системі.
+    /// </summary>
+    /// <remarks>
+    /// Створює новий обліковий запис кандидата. Пароль обов'язково перевіряється на мінімальну довжину (від 8 символів).
+    /// Після успішної реєстрації автоматично створюється унікальний Tenant ID для ізоляції майбутніх вакансій.
+    /// </remarks>
+    /// <param name="request">Дані для реєстрації (Email та Пароль)</param>
+    /// <param name="cancellationToken">Токен скасування операції</param>
+    /// <returns>Повертає пару токенів (Access та Refresh) для миттєвого входу</returns>
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register(
         [FromBody] RegisterRequest request, 
         CancellationToken cancellationToken)
@@ -38,8 +55,22 @@ public class AuthController : ControllerBase
         }
     }
     
+    /// <summary>
+    /// Авторизація користувача (Вхід у систему).
+    /// </summary>
+    /// <remarks>
+    /// Перевіряє пару Email/Password. У разі успіху генерує JWT токен (Access Token), 
+    /// який потрібно передавати у заголовку "Authorization: Bearer {token}" для доступу до вакансій.
+    /// </remarks>
+    /// <param name="request">Логін та пароль користувача</param>
+    /// <param name="cancellationToken">Токен скасування операції</param>
+    /// <returns>Об'єкт з Access Token та Refresh Token</returns>
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request, 
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -53,8 +84,22 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Оновлення згасаючої сесії за допомогою Refresh Token.
+    /// </summary>
+    /// <remarks>
+    /// Дозволяє фронтенду безшумно оновити Access Token без повторного введення пароля користувачем.
+    /// Переданий Refresh Token перевіряється на термін дії та валідність у базі даних.
+    /// </remarks>
+    /// <param name="request">Об'єкт, що містить поточний Refresh Token</param>
+    /// <param name="cancellationToken">Токен скасування операції</param>
+    /// <returns>Нова пара Access та Refresh токенів</returns>
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshRequestDto request, CancellationToken cancellationToken)
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh(
+        [FromBody] RefreshRequestDto request, 
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -68,4 +113,34 @@ public class AuthController : ControllerBase
     }
 }
 
+/// <summary>
+/// Об'єкт запиту для оновлення токенів авторизації.
+/// </summary>
+/// <param name="RefreshToken">Діючий токен оновлення сесії</param>
 public record RefreshRequestDto(string RefreshToken);
+
+/*
+Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1laWQiOiIwMTllZmFmOC02OWZmLTcyNmUtYTg4NC00ZjVlYjQ3ZGZkYjMiLCJlbWFpbCI6Im9sZWtzaXkyNjAzMjAwNUBnbWFpbC5jb20iLCJuYmYiOjE3ODIzMjcwNDQsImV4cCI6MTc4MjMyNzk0NCwiaWF0IjoxNzgyMzI3MDQ0LCJpc3MiOiJDYXJlZXJBc3Npc3RhbmNlQXBpIiwiYXVkIjoiQ2FyZWVyQXNzaXN0YW5jZUNsaWVudCJ9.Wr9upzAgaNcitZFks5_jUg7AfZUvixIJE2iCp674Dxc
+ 
+ {
+     "title": ".NET розробник / .NET Developer (Вінниця, офіс)",
+     "company": "ONSEO",
+     "description": "Реально міг пройти нормально тех собес",
+     "url": "https://jobs.dou.ua/companies/onseo/vacancies/360730/",
+     "notes": "Дуже хочу сюди потрапити",
+     "salaryRange": "$1000 - $1500 gross"
+   }
+   
+   {
+     "id": "69050e30-532c-4de1-901e-d00211ffab31",
+     "title": ".NET розробник / .NET Developer (Вінниця, офіс)",
+     "company": "ONSEO",
+     "description": "Реально міг пройти нормально тех собес",
+     "url": "https://jobs.dou.ua/companies/onseo/vacancies/360730/",
+     "notes": "Дуже хочу сюди потрапити",
+     "salaryRange": "$1000 - $1500 gross",
+     "status": 1,
+     "createdAt": "2026-06-24T18:55:32.750307Z",
+     "updatedAt": null
+   }
+ */

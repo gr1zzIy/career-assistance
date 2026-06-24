@@ -22,6 +22,8 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString, b => 
                 b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+        
         // Реєстрація бізнес-сервісу автентифікації
         services.AddScoped<IAuthService, AuthService>();
         

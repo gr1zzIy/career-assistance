@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CareerAssistance.Infrastructure.Persistence;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : DbContext, IApplicationDbContext
 {
     private readonly ICurrentUserService _currentUserService;
 

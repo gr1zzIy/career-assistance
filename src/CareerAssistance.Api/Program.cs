@@ -1,6 +1,7 @@
 using CareerAssistance.Application.Interfaces;
 using CareerAssistance.Api.Services;
 using CareerAssistance.Api.Extensions;
+using CareerAssistance.Application.Services;
 using CareerAssistance.Infrastructure;
 using Scalar.AspNetCore;
 
@@ -9,7 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Реєстрація системних компонентів веб-рівня
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IJobService, JobService>();
 
 builder.Services.AddOpenApi();
 
