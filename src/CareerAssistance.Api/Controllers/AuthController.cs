@@ -39,10 +39,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            // Валідація мінімальної довжини пароля на рівні API контролера для надійності
-            if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+            // мін 8 знаків, 1 велика, 1 мала, 1 цифра, 1 спецсимвол
+            var passwordRegex = new System.Text.RegularExpressions.Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
+
+            if (string.IsNullOrWhiteSpace(request.Password) || !passwordRegex.IsMatch(request.Password))
             {
-                return BadRequest("Password must be at least 8 characters long.");
+                return BadRequest("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
             }
 
             var response = await _authService.RegisterAsync(request, cancellationToken);
