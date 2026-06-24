@@ -1,3 +1,4 @@
+using CareerAssistance.Application.DTOs.Dashboard;
 using CareerAssistance.Application.DTOs.Jobs;
 using CareerAssistance.Application.Interfaces;
 using CareerAssistance.Domain.Entities;
@@ -118,6 +119,33 @@ public class JobService : IJobService
             _dbContext.Jobs.Remove(job);
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
+    }
+    
+    public async Task<DashboardAnalyticsResponse> GetAnalyticsAsync(CancellationToken cancellationToken = default)
+    {
+        // Отримуємо статистику групуванням на рівні бази даних 
+        var stats = await _dbContext.Jobs
+            .AsNoTracking()
+            .GroupBy(j => j.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        // Перетворюємо плоский список груп у зручний словник для швидкого пошуку
+        var statsDict = stats.ToDictionary(x => x.Status, x => x.Count);
+
+        // Безпечно витягуємо значення із словника (якщо статус відсутній в базі, повертаємо 0)
+        int GetCount(JobStatus status) => statsDict.GetValueOrDefault(status, 0);
+
+        var saved = GetCount(JobStatus.Saved);
+        var applied = GetCount(JobStatus.Applied);
+        var interview = GetCount(JobStatus.Interview);
+        var offer = GetCount(JobStatus.Offer);
+        var rejected = GetCount(JobStatus.Rejected);
+
+        // Активними вважаємо всі вакансії, крім відхилених
+        var totalActive = saved + applied + interview + offer;
+
+        return new DashboardAnalyticsResponse(saved, applied, interview, offer, rejected, totalActive);
     }
 
     #region Mapper

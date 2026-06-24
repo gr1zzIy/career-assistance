@@ -1,3 +1,4 @@
+using CareerAssistance.Application.DTOs.Dashboard;
 using CareerAssistance.Application.DTOs.Jobs;
 using CareerAssistance.Domain.Enums;
 
@@ -11,4 +12,5 @@ public interface IJobService
     Task<JobResponse> UpdateAsync(Guid id, CreateJobRequest request, CancellationToken cancellationToken = default);
     Task<JobResponse> UpdateStatusAsync(Guid id, JobStatus newStatus, CancellationToken cancellationToken = default);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<DashboardAnalyticsResponse> GetAnalyticsAsync(CancellationToken cancellationToken = default);
 }
